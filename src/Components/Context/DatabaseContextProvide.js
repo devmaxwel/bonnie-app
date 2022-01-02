@@ -21,9 +21,7 @@ export function UserAuthContextProvider({children}){
         return signOut(authentication);
     }
 
-    function resetUserPassword(email){
-        return sendPasswordResetEmail(authentication, email);
-    }
+   
 
     useEffect(() => {
       const unsubscribe =   onAuthStateChanged(authentication, (currentUser) => {

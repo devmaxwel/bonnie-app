@@ -2,7 +2,7 @@ import './App.css';
 import 'react-toastify/dist/ReactToastify.css'
 import 'bootstrap/dist/css/bootstrap.css';
 import { ToastContainer} from 'react-toastify'
-import {Routes, Route, BrowserRouter} from 'react-router-dom'
+import {Routes, Route} from 'react-router-dom'
 import { Container, Col, Row} from 'react-bootstrap'
 import Home from './Components/Home/Home'
 import SignIn from './Components/Authentication/SignIn'
