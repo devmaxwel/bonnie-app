@@ -3,13 +3,13 @@ import { Button,Alert , Form} from 'react-bootstrap';
 import { useUserAuthContext } from '../Context/DatabaseContextProvide';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
-import { database } from '../Config/dbFirebase';
-import { collection, addDoc , getDocs} from 'firebase/firestore';
+import { realtime } from '../Config/dbFirebase';
+import { remove , get, ref, push } from 'firebase/database';
 
 const Home = () => {
    
   
-    const [customers, setCustomers] = useState([]);
+    const [customers, setCustomers] = useState({});
     const [cname, setCname] = useState("")
     const [contact, setContact] = useState("")
     const [serial, setSerial] = useState("")
@@ -23,10 +23,8 @@ const Home = () => {
     const [error, setError] = useState("");
 
 
-    
 
-
-    const {signOutUser} = useUserAuthContext();
+    const { signOutUser, user } = useUserAuthContext();
     
     const navigate = useNavigate('');
 
@@ -42,48 +40,64 @@ const Home = () => {
 
     }
 
-    const customersCollectionRef = collection(database, "customers");
 
-    const handleFormSubmit = async (e) =>{
-        e.preventDefault();
-        setError("")
+function writeUserData(e) {
+    e.preventDefault();
+    
 
-        if(!cname || !contact || !serial || !device || !amountc || !amountp || !status || !served ){
-            toast.error("Please Provide Data in each Field")
-        }
-        else{
+    push(ref(realtime, "customers/"), {Name:cname,Contact: contact,
+                   Serial:serial,  Device: device, Served: served, 
+                   AmountC:amountc, AmountP:amountp, 
+                   Status:status }).then(() => {
+                   toast.success("Data Saved Succefully");
+      })
+      .catch((err) => {
+             setError(err.message);
+      });
+      
+  };
 
-            try {
-           
-                await addDoc(customersCollectionRef, {Name:cname,Contact: contact,
-                Serial:serial,  Device: device, Served: served, AmountC:amountc, AmountP:amountp, Status:status });
-                toast.success("Data was Save successfully")
-                
-            } catch (err) {
-              setError(err.message);
+
+  
+  
+
+     useEffect(() => {
+            const readCustomerData= async()=> {
+
+                await get(ref(realtime, "customers/")).then( (snapshot) => {
+                    if(snapshot.exists()){
+                        console.log(snapshot.val());
+                       setCustomers({...snapshot.val()});
+
+                    }else 
+
+                    {
+                        setCustomers({});
+                    }
+                })
+
+                return () => {
+                    setCustomers({});
+                };
+
+            };
+
+            readCustomerData();
+        },[]);
+
+
+         const deleteRecord= async(id)=> {
+             if (window.confirm(" Are you sure you want do delete customer")
+               
+            ){
+                await remove(ref(realtime, `customers/${id}`), ({...customers})).then( () => {
+                    toast.success("Data was deleted successfully")
+                }).catch( (err) => {
+                    setError(err.message);
+                });
             }
-    
-
-        }
-
-       
-
-    }
-
-    useEffect(() => {
-
-        const readCustomersData= async() =>{
-            const data = await getDocs(customersCollectionRef);
-            setCustomers(data.docs.map((doc) => ({ ...doc.data(), id:doc.id})));
-            console.log(data.size);
-
-        }
-
-        readCustomersData();
-    },[customersCollectionRef]);
-
-   
-    
+            
+         };
 
     return (
 
@@ -95,6 +109,9 @@ const Home = () => {
                     <div className='nav-link'> 
                     <Button onClick={ handleSignOut }>Sign Out</Button>
                     </div>
+                    <div>
+                        <p>Welcome {user.email}</p>
+                    </div>
 
 
                     </nav>
@@ -105,54 +122,57 @@ const Home = () => {
                 <section>
                 <h1 className='text-primary' >Customer_Records</h1>
                 <table class="table table-dark table-striped">
+                    {error && <Alert>{error}</Alert>}
+                   
                
                 <thead>
+               
                         <tr >
-                                <th scope="col">Number</th>
-                                <th scope="col">Client_Name</th>
-                                <th scope="col">Phone_Number</th>
-                                <th scope="col">Device_Serial</th>
-                                <th scope="col">Device_Diagnostics</th>
-                                <th scope="col">Served_By</th>
-                                <th scope="col">Amount_Charged</th>
-                                <th scope="col">Amount_Paid</th>
-                                <th scope="col">Status</th>
-                                <th className='text-primary' scope="col">Actions</th>
+                                <th style={{ textAlign: "center" }}>Number</th>
+                                <th style={{ textAlign: "center" }}>Client_Name</th>
+                                <th style={{ textAlign: "center" }}>Phone_Number</th>
+                                <th style={{ textAlign: "center" }}>Device_Serial</th>
+                                <th style={{ textAlign: "center" }}>Device_Diagnostics</th>
+                                <th style={{ textAlign: "center" }}>Served_By</th>
+                                <th style={{ textAlign: "center" }}>Amount_Charged</th>
+                                <th style={{ textAlign: "center" }}>Amount_Paid</th>
+                                <th style={{ textAlign: "center" }}>Status</th>
+                                <th className='text-primary' style={{ textAlign: "center" }}>Actions</th>
 
                         </tr>
                 </thead>
 
                  <tbody>
 
-                 {  customers.map(( value, index) => { 
-                      return( 
+                     { Object.keys(customers).map((id,index) => {
+                         return(
 
-                    <tr key={index.id}>
+                        <tr key={id}>
                        
-                        <th scope="row">{index+1}</th>
-                        <td>{value.cname}</td>
-                        <td>{value.contact}</td>
-                        <td>{value.serial}</td>
-                        <th>{value.sserved}</th>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
-                        <td>{}</td>
+                            <th scope="row">{index+ 1}</th>
 
-                        <td className='p-2 d-flex justify-content-space-between'>
-                            <Button variant='success'>Update</Button> <Button variant='danger'>Delete</Button>
-                           
-                        </td>
-                    </tr>
+                                <td>{customers[id].Name}</td>
+                                <td>{customers[id].Contact}</td>
+                                <td>{customers[id].Serial}</td>
+                                <th>{customers[id].Device}</th>
+                                <td>{customers[id].Served}</td>
+                                <td>{customers[id].AmountC}</td>
+                                <td>{customers[id].AmountP}</td>
+                                <td>{customers[id].Status}</td>
+        
+                                <td className='d-flex justify-content-space-between'>
+                                    <Button style={{position:"inline"}}  
+                                    variant='danger' 
+                                    onClick={() => deleteRecord(id)}>Delete</Button>
+                                
+                                </td>
+                        </tr>
 
+                         )
 
-                      )
-                  })}
-
-                       
-                        
-                       
-                </tbody>
+                     })}
+                    
+             </tbody>
 
                </table> 
                 </section>
@@ -160,10 +180,10 @@ const Home = () => {
                 <section>
                 <div className="p-4 box">
                     <h2 className="mb-3">Record Customer Details</h2>
+
                     { error && <Alert variant='danger'>{ error }</Alert>}
                   
-
-                            <Form id='FormData' onSubmit={handleFormSubmit} >
+                         <Form id='FormData' onSubmit={writeUserData} >
 
                                     <Form.Group className="mb-3" controlId="formBasicEmail">
                                         <Form.Control
@@ -232,7 +252,7 @@ const Home = () => {
                                     <Form.Group className="mb-3" controlId="formBasicPassword">
                                         <Form.Control
                                         type="text"
-                                        placeholder="Status"
+                                        placeholder="Payment Status"
                                         onChange={(e) => setStatus(e.target.value)}
                                         required
                                         />
